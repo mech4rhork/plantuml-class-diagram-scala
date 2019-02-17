@@ -1,2 +1,6 @@
+target
 *.class
-*.log
+*.iml
+*.ipr
+*.iws
+.idea

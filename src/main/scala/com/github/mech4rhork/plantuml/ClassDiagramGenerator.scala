@@ -7,6 +7,7 @@ import com.github.mech4rhork.plantuml.ClassSymbolLabel.ClassSymbolLabel
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
+import scala.io.Source
 import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe.ClassSymbol
 
@@ -14,7 +15,6 @@ object ClassDiagramGenerator {
 
   var counter = 0 // DEBUG
   val addedClasses: ListBuffer[String] = ListBuffer[String]()
-  //  val dollarPatter = "^([^$]*\\$[^$]*){0,1}$"
 
   /**
     * Java reflection.
@@ -30,34 +30,6 @@ object ClassDiagramGenerator {
     method.invoke(urlClassLoader, Array(url):_*)
   }
 
-  /**
-    * Scala reflection.
-    * https://docs.scala-lang.org/overviews/reflection/environment-universes-mirrors.html
-    */
-  def addPathToClasspath2(dir: File): Unit = {
-    val url = dir.toURI.toURL
-    val ru = scala.reflect.runtime.universe
-    val rm = ru.runtimeMirror(getClass.getClassLoader)
-    val instanceMirror = rm.reflect(ClassLoader.getSystemClassLoader.asInstanceOf[URLClassLoader])
-    //    println(s"[DEBUG] in method addPathToClasspath: instanceMirror=${instanceMirror}") // DEBUG
-    //    println(s"[DEBUG] in method addPathToClasspath: methodSymbol=${ru.typeOf[URLClassLoader].decl(ru.TermName("addUrl"))}") // DEBUG
-    val methodSymbol = ru.typeOf[URLClassLoader].decl(ru.TermName("addUrl")).asMethod
-    val methodMirror = instanceMirror.reflectMethod(methodSymbol)
-    methodMirror(url)
-  }
-
-  def _listClassFiles(dir: File): Seq[File] = {
-    val dollarFilter = new FilenameFilter {
-      override def accept(f: File, name: String): Boolean = {
-        !name.contains("$") && (f.isDirectory || name.endsWith(".class"))
-      }
-    }
-    Option(dir.listFiles(dollarFilter)).map(_.toSeq.flatMap {
-      case f if f.isDirectory => _listClassFiles(f)
-      case f => Seq(f)
-    }).getOrElse(Seq.empty)
-  }
-
   def getClassSymbolLabel(classSymbol: ClassSymbol): ClassSymbolLabel = {
     val res = classSymbol match {
       case s if s.isCaseClass => ClassSymbolLabel.CASE_CLASS
@@ -70,17 +42,61 @@ object ClassDiagramGenerator {
     res
   }
 
+  def debugClassSymbol(classSymbol: ClassSymbol): Unit = {
+    println(s" > classSymbol.isAbstract=${classSymbol.isAbstract}") // DEBUG
+    println(s" > classSymbol.isAbstractOverride=${classSymbol.isAbstractOverride}") // DEBUG
+    println(s" > classSymbol.isAliasType=${classSymbol.isAliasType}") // DEBUG
+    println(s" > classSymbol.isCaseClass=${classSymbol.isCaseClass}") // DEBUG
+    println(s" > classSymbol.isClass=${classSymbol.isClass}") // DEBUG
+    println(s" > classSymbol.isConstructor=${classSymbol.isConstructor}") // DEBUG
+    println(s" > classSymbol.isContravariant=${classSymbol.isContravariant}") // DEBUG
+    println(s" > classSymbol.isCovariant=${classSymbol.isCovariant}") // DEBUG
+    println(s" > classSymbol.isDerivedValueClass=${classSymbol.isDerivedValueClass}") // DEBUG
+    println(s" > classSymbol.isModule=${classSymbol.isModule}") // DEBUG
+    println(s" > classSymbol.isModuleClass=${classSymbol.isModuleClass}") // DEBUG
+    println(s" > classSymbol.isPackage=${classSymbol.isPackage}") // DEBUG
+    println(s" > classSymbol.isPackageClass=${classSymbol.isPackageClass}") // DEBUG
+    println(s" > classSymbol.isSynthetic=${classSymbol.isSynthetic}") // DEBUG
+    println(s" > classSymbol.isTerm=${classSymbol.isTerm}") // DEBUG
+    println(s" > classSymbol.isTrait=${classSymbol.isTrait}") // DEBUG
+    println(s" > classSymbol.isType=${classSymbol.isType}") // DEBUG
+  }
+
+  /**
+    * class <- 0 $
+    * object <- 1 $ at the end
+    * anon/gen <- _
+    */
+  def isNotGenerated(inputString: String): Boolean = {
+    val s = inputString.replace(".class", "")
+    println(s">>> isNotGenerated( $inputString )") // DEBUG
+    val dollarCount = s.count(_ == '$')
+    val endsWithDollar = s.endsWith("$")
+
+    val res =
+      s match {
+        case _ if dollarCount == 0 => true
+        case _ if dollarCount == 1 && endsWithDollar => true
+        case _ => false
+      }
+
+    res
+  }
+
   /**
     * Function generating the plantuml string.
     */
-  def generate(rootDir: File, setting: GenerateSetting)(fanout: String => Unit) = {
+  def generate(rootDir: File, dependencyClasspath: File, setting: GenerateSetting)(fanout: String => Unit) = {
+
+    //
+    val dependencyURLs = Source.fromFile(dependencyClasspath).getLines.toList.sorted.map(x => new File(x))
+    dependencyURLs.map{x => s"[DEBUG][dependency URL] $x"}.foreach(println) // DEBUG
+    dependencyURLs.foreach(addPathToClasspath)
 
     addPathToClasspath(rootDir) // Add URL to class path.
 
     val dollarFilter = new FilenameFilter {
-      override def accept(f: File, name: String): Boolean = {
-        (f.isDirectory || name.endsWith(".class"))
-      }
+      override def accept(f: File, name: String): Boolean = f.isDirectory || name.endsWith(".class")
     }
 
     this.getClass.getClassLoader.asInstanceOf[URLClassLoader].getURLs.map{x => s"[DEBUG][URL] $x"}.foreach(println) // DEBUG
@@ -103,8 +119,9 @@ object ClassDiagramGenerator {
 
         counter += 1
         println()
-        println(s"[DEBUG] in method generate: cn=$cn ---($counter)---") // DEBUG
+        println(s"[DEBUG] in method generate: cn=$cn ${"-"*10}($counter)${"-"*60}") // DEBUG
         val clazz = loader.loadClass(cn)
+        println(s"[DEBUG] in method generate: clazz=$clazz") // DEBUG
 
         val runtimeMirror = universe.runtimeMirror(loader)
         val classSymbol = runtimeMirror.classSymbol(clazz)
@@ -165,7 +182,7 @@ object ClassDiagramGenerator {
           addedClasses.append(cn.replace("$", ""))
 
       } catch {
-        case e: Exception =>
+        case e: Throwable =>
           println(s"An exception was thrown (class: $cn).")
           e.printStackTrace()
       }
@@ -221,45 +238,5 @@ object ClassDiagramGenerator {
       println(s"[DEBUG] in method toFQCN: fragement=$fragment") // DEBUG
       s"${setting.rootPackage}.$fragment".replaceAll("^\\.*", "")
     }
-  }
-
-  def debugClassSymbol(classSymbol: ClassSymbol): Unit = {
-    println(s" > classSymbol.isAbstract=${classSymbol.isAbstract}") // DEBUG
-    println(s" > classSymbol.isAbstractOverride=${classSymbol.isAbstractOverride}") // DEBUG
-    println(s" > classSymbol.isAliasType=${classSymbol.isAliasType}") // DEBUG
-    println(s" > classSymbol.isCaseClass=${classSymbol.isCaseClass}") // DEBUG
-    println(s" > classSymbol.isClass=${classSymbol.isClass}") // DEBUG
-    println(s" > classSymbol.isConstructor=${classSymbol.isConstructor}") // DEBUG
-    println(s" > classSymbol.isContravariant=${classSymbol.isContravariant}") // DEBUG
-    println(s" > classSymbol.isCovariant=${classSymbol.isCovariant}") // DEBUG
-    println(s" > classSymbol.isDerivedValueClass=${classSymbol.isDerivedValueClass}") // DEBUG
-    println(s" > classSymbol.isModule=${classSymbol.isModule}") // DEBUG
-    println(s" > classSymbol.isModuleClass=${classSymbol.isModuleClass}") // DEBUG
-    println(s" > classSymbol.isPackage=${classSymbol.isPackage}") // DEBUG
-    println(s" > classSymbol.isPackageClass=${classSymbol.isPackageClass}") // DEBUG
-    println(s" > classSymbol.isSynthetic=${classSymbol.isSynthetic}") // DEBUG
-    println(s" > classSymbol.isTerm=${classSymbol.isTerm}") // DEBUG
-    println(s" > classSymbol.isTrait=${classSymbol.isTrait}") // DEBUG
-    println(s" > classSymbol.isType=${classSymbol.isType}") // DEBUG
-  }
-
-  /**
-    * class <- 0 $
-    * object <- 1 $ at the end
-    * anon/gen <- _
-    */
-  def isNotGenerated(inputString: String): Boolean = {
-    val s = inputString.replace(".class", "")
-    println(s">>> isNotGenerated( $inputString )") // DEBUG
-    val dollarCount = s.count(_ == '$')
-    val endsWithDollar = s.endsWith("$")
-
-    val res = s match {
-      case s if dollarCount == 0 => true
-      case s if dollarCount == 1 && endsWithDollar => true
-      case _ => false
-    }
-
-    res
   }
 }

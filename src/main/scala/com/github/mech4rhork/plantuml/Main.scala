@@ -31,7 +31,7 @@ object Main {
   val sepChar = File.separatorChar.toString
 
   // Task.
-  def doTask(pClassDir: String, pOutputPath: String): Unit = {
+  def doTask(pClassDir: String, pDependencyClasspath: String, pOutputPath: String): Unit = {
 
     // More settings.
     val rootPackage = genClassDiagramPackage
@@ -48,7 +48,7 @@ object Main {
     val setting = GenerateSetting(
       rootPackage, genClassDiagramIgnoreImplicit, ignoreClassNameReg = genClassDiagramNameFilter)
     try {
-      ClassDiagramGenerator.generate(packageRootDir, setting) { output =>
+      ClassDiagramGenerator.generate(packageRootDir, new File(pDependencyClasspath), setting) { output =>
         bw.append(output)
       }
     } finally {
@@ -61,21 +61,26 @@ object Main {
 
     // Arguments parsing.
     val usage = """
-      Usage: JAR <class_dir> <output_path>
+  Usage: JAR <class_dir> <dependencies> <output_path>
+    class_dir:    Path to compiled classes of project (.class files).
+    dependencies: Path to file containing dependency classpath. Each line must correspond to one URI.
+    output_path:  PlantUML diagram output file (e.g. ./output/diagram.txt).
     """
     args.map {x => s"[DEBUG][args] $x"}.foreach(println) // DEBUG
-    if (args.length != 2) {
+    if (args.length != 3) {
       println(usage)
       System.exit(1)
     }
     val classDir = new File(args(0)).toString
-    val outputPath = new File(args(1)).toString
+    val dependencyClasspath = new File(args(1)).toString
+    val outputPath = new File(args(2)).toString
     println(s"[DEBUG][args] classDir=$classDir") // DEBUG
+    println(s"[DEBUG][args] dependencyClasspath=$dependencyClasspath") // DEBUG
     println(s"[DEBUG][args] outputPath=$outputPath") // DEBUG
 
     // Task.
-    doTask(classDir, outputPath)
+    doTask(classDir, dependencyClasspath, outputPath)
 
-    println("[DEBUG]  ---   End   ---0149") // DEBUG
+    println("[DEBUG]  ---   End   ---0323") // DEBUG
   }
 }

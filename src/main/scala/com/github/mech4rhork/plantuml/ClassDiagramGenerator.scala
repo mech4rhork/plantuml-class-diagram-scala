@@ -140,9 +140,9 @@ object ClassDiagramGenerator {
         println(s"[DEBUG] in method generate: varList=$varList") // DEBUG
         val declarations = typ.decls
           .filter(_.isMethod)
-          //        .filter(_.isPublic)
+          .filter(_.isPublic)
           .filterNot(_.isSynthetic)
-          //        .filterNot(_.name.toString == "<init>")
+          .filterNot(_.name.toString == "<init>")
           .filterNot(_.name.toString == "$init$")
           .filterNot(_.name.toString.endsWith("_$eq"))
           .filterNot(_.isJava)

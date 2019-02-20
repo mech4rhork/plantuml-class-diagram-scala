@@ -198,12 +198,18 @@ object ClassDiagramGenerator {
     }
 
     import scala.reflect.runtime.universe.{Symbol => RefSymbol}
-    def paramToString(param: RefSymbol): String =
-      (if (param.isImplicit) "implicit " else "") +
-        param.name +
-        ": " +
-        param.typeSignature.typeSymbol.name +
-        typeToString(param.typeSignature)
+    def paramToString(param: RefSymbol): String = {
+      var res = (if (param.isImplicit) "implicit " else "") + param.name + ": " + param.typeSignature.typeSymbol.name
+      try {
+        res += typeToString(param.typeSignature)
+      } catch {
+        case e: Throwable =>
+          println(s"An exception was thrown (res = res.concat(typeToString(param.typeSignature))).")
+          e.printStackTrace()
+          res += "[?]"
+      }
+      res
+    }
 
     import scala.reflect.runtime.universe.MethodSymbol
     def declToString(term: String, method: MethodSymbol): String =

@@ -109,6 +109,7 @@ object ClassDiagramGenerator {
 
     fanout("@startuml\n")
     fanout("skinparam stereotypeCBackgroundColor #8cd3ec\n") // Default background color.
+    fanout("skinparam classFontSize 14\n") // Class font size.
 
     listFiles(rootDir).filter(x => isNotGenerated(x.toString)).map{x => s"[DEBUG] $x"}.foreach(println) // DEBUG
     listFiles(rootDir)
@@ -183,7 +184,7 @@ object ClassDiagramGenerator {
 
       } catch {
         case e: Throwable =>
-          println(s"An exception was thrown (class: $cn).")
+          println(s"An exception was thrown ===>>> class: $cn")
           e.printStackTrace()
       }
     }
@@ -200,26 +201,29 @@ object ClassDiagramGenerator {
     import scala.reflect.runtime.universe.{Symbol => RefSymbol}
     def paramToString(param: RefSymbol): String = {
       var res = (if (param.isImplicit) "implicit " else "") + param.name + ": " + param.typeSignature.typeSymbol.name
-      try {
-        res += typeToString(param.typeSignature)
-      } catch {
-        case e: Throwable =>
-          println(s"An exception was thrown (res = res.concat(typeToString(param.typeSignature))).")
-          e.printStackTrace()
-          res += "[?]"
-      }
+      res += typeToString(param.typeSignature)
       res
     }
 
     import scala.reflect.runtime.universe.MethodSymbol
-    def declToString(term: String, method: MethodSymbol): String =
-      term +
-        method.name.decodedName +
-        method.typeParams.map(_.name).mkStringIfNonEmpty("[", ",", "]") +
-        method.paramLists.filterNot(setting.ignoreImplicit && _.headOption.exists(_.isImplicit)).map(_.map(paramToString).mkString(", ")).mkStringIfNonEmpty("(", ")(", ")") +
-        ": " +
-        method.returnType.typeSymbol.name +
-        typeToString(method.returnType)
+    def declToString(term: String, method: MethodSymbol): String = {
+      var res = ""
+      try {
+//        throw new AssertionError("ae")
+        res = term
+        res += method.name.decodedName
+        res += method.typeParams.map(_.name).mkStringIfNonEmpty("[", ",", "]")
+        res += method.paramLists.filterNot(setting.ignoreImplicit && _.headOption.exists(_.isImplicit)).map(_.map(paramToString).mkString(", ")).mkStringIfNonEmpty("(", ")(", ")")
+        res += ": "
+        res += method.returnType.typeSymbol.name
+        res += typeToString(method.returnType)
+      } catch {
+        case e: Throwable =>
+          e.printStackTrace()
+          return ":unresolved:"
+      }
+      res
+    }
 
     def typeToString(typ: universe.Type, from: Option[universe.Type] = None): String = {
       val typeSymbol = typ.typeSymbol

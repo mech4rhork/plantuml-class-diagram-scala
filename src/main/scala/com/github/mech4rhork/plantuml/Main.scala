@@ -81,6 +81,6 @@ object Main {
     // Task.
     doTask(classDir, dependencyClasspath, outputPath)
 
-    println("[DEBUG]  ---   End   ---2335") // DEBUG
+    println("[DEBUG]  ---   End   ---0038") // DEBUG
   }
 }

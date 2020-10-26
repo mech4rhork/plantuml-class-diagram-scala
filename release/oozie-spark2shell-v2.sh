@@ -53,6 +53,9 @@ sed -i "s/<\/shell>/\t<env-var>SPARK_MAJOR_VERSION=2<\/env-var>\n\t\t<\/shell>/g
 # <file> just before </shell>
 sed -i "s/<\/shell>/\t<file>${var_file_tag_content}<\/file>\n\t\t<\/shell>/g" "${var_processed_file}"
 
+# <exec> just before <argument>--master
+sed -i "s/<argument>--master/<exec>run-spark-submit.sh<\/exec>\n\t\t\t<argument>--master/g" "${var_processed_file}"
+
 # fix wrong <argument> tags
 declare -a tags=(
 "<argument>--name\s\+mapreduce.job.queuename<\/argument>:<name>mapreduce.job.queuename<\/name>"
@@ -65,3 +68,4 @@ for tag in "${tags[@]}"; do
     var_replace="$(echo ${tag} |cut -d':' -f2)"
 	sed -i "s/${var_find}/${var_replace}/g" "${var_processed_file}"
 done
+

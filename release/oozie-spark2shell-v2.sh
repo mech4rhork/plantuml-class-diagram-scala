@@ -60,6 +60,7 @@ sed -i "s/<argument>--master/<exec>run-spark-submit.sh<\/exec>\n\t\t\t<argument>
 declare -a tags=(
 "<argument>--name\s\+mapreduce.job.queuename<\/argument>:<name>mapreduce.job.queuename<\/name>"
 "<argument>--name\s\+mapred.job.queue.name<\/argument>:<name>mapred.job.queue.name<\/name>"
+"<argument>--name\s\+oozie.action.sharelib.for.spark<\/argument>:<name>oozie.action.sharelib.for.spark<\/name>"
 )
 for tag in "${tags[@]}"; do
     if [ -z "$v" ]; then v=''; else v="$v "; fi

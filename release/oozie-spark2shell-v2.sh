@@ -52,3 +52,16 @@ sed -i "s/<\/shell>/\t<env-var>SPARK_MAJOR_VERSION=2<\/env-var>\n\t\t<\/shell>/g
 
 # <file> just before </shell>
 sed -i "s/<\/shell>/\t<file>${var_file_tag_content}<\/file>\n\t\t<\/shell>/g" "${var_processed_file}"
+
+# fix wrong <argument> tags
+declare -a tags=(
+"<argument>--name\s\+mapreduce.job.queuename<\/argument>:<name>mapreduce.job.queuename<\/name>"
+"<argument>--name\s\+mapred.job.queue.name<\/argument>:<name>mapred.job.queue.name<\/name>"
+)
+for tag in "${tags[@]}"; do
+    if [ -z "$v" ]; then v=''; else v="$v "; fi
+    sed -i "s/<$k>\(.*\)<\/$k>/${arg_begin}$v\1${arg_end}/g" "${var_processed_file}"
+	var_find="$(echo ${tag} |cut -d':' -f1)"
+    var_replace="$(echo ${tag} |cut -d':' -f2)"
+	sed -i "s/${var_find}/${var_replace}/g" "${var_processed_file}"
+done

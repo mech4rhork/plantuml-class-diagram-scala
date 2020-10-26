@@ -11,11 +11,18 @@
 var_input_file="$1"
 echo "DEBUG: var_input_file=${var_input_file}"
 
-var_processed_file=processed_"${var_input_file}"
+var_processed_file="${var_input_file}".processed.xml
 echo "DEBUG: var_processed_file=${var_processed_file}"
+
+var_file_tag_content='hdfs:\/\/\/BDDF\/Projet\/SNB\/pfm\/Scripts\/oozie\/shared\/lib\/run-spark-submit.sh#run-spark-submit.sh'
 
 echo '# Processing'
 cp -vf "${var_input_file}" "${var_processed_file}"
+
+# <spark-opts> newlines
+sed -i '$!N;s/<spark-opts>\(\s\|\n\|\t\)*/<spark-opts>/g;P;D' "${var_processed_file}"
+sed -i '$!N;s/\(\s\|\n\|\t\)*<\/spark-opts>/<\/spark-opts>/g;P;D' "${var_processed_file}"
+# echo -e '<spark-opts>    \n--conf a --conf b\n   </spark-opts>' |sed '$!N;s/<spark-opts>\(\s\|\n\|\t\)*/<spark-opts>/g;P;D' |sed '$!N;s/\(\s\|\n\|\t\)*<\/spark-opts>/<\/spark-opts>/g;P;D'
 
 arg_begin='<argument>'
 arg_end='<\/argument>'
@@ -44,4 +51,4 @@ done
 sed -i "s/<\/shell>/\t<env-var>SPARK_MAJOR_VERSION=2<\/env-var>\n\t\t<\/shell>/g" "${var_processed_file}"
 
 # <file> just before </shell>
-sed -i "s/<\/shell>/\t<file>hdfs:\/\/\/fakepath\/run-spark-submit.sh#run-spark-submit.sh<\/file>\n\t\t<\/shell>/g" "${var_processed_file}"
+sed -i "s/<\/shell>/\t<file>${var_file_tag_content}<\/file>\n\t\t<\/shell>/g" "${var_processed_file}"
